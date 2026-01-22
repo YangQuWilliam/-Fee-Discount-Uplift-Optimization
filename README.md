@@ -12,3 +12,20 @@ and explores improved allocation strategies.
 ## Status
 - README created
 - Project setup in progress
+
+## Data & Decision Schema
+
+**Decision**: allocate fee discounts under a fixed budget.
+
+**Treatment (T)**: whether a user receives a fee discount in the decision window.
+
+**Outcome (Y)**: binary indicator of whether the user trades in the subsequent window.
+
+**Features (X)**: pre-treatment user features derived from historical activity only.
+
+**Budget (K)**: top 10% of users can receive discounts.
+
+**Baseline Policy**: prioritize users with highest historical activity (threshold-based rule).
+
+The Bank Marketing dataset is used as a structural proxy for fee discount incentives,
+focusing on causal decision-making under budget constraints rather than domain semantics.
