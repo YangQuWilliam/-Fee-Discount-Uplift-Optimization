@@ -1,0 +1,2 @@
+-r fee-discount-uplift/requirements.txt
+numpy>=1.24
