@@ -8,6 +8,10 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
+import io
+import zipfile
+from urllib.request import urlopen
+
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
@@ -31,12 +35,28 @@ class DatasetBundle:
 
 def load_bank_marketing_df() -> pd.DataFrame:
     """
-    Loads the UCI Bank Marketing dataset from OpenML.
-    Dataset name is commonly "bank-marketing" or "Bank Marketing".
-    We'll search by the OpenML name "bank-marketing".
+    Loads the UCI Bank Marketing dataset with human-readable column names.
+    Prefer the original UCI CSV (semicolon-delimited). If unavailable, fall back to OpenML.
     """
-    ds = fetch_openml(name="bank-marketing", version=1, as_frame=True, parser="auto")
-    df = ds.frame.copy()
+    uci_url = "https://archive.ics.uci.edu/static/public/222/bank+marketing.zip"
+    try:
+        with urlopen(uci_url) as resp:
+            data = resp.read()
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            # The UCI bundle contains nested zips: bank.zip and bank-additional.zip.
+            if "bank.zip" in zf.namelist():
+                with zipfile.ZipFile(io.BytesIO(zf.read("bank.zip"))) as inner:
+                    with inner.open("bank-full.csv") as f:
+                        df = pd.read_csv(f, sep=";")
+            elif "bank-additional.zip" in zf.namelist():
+                with zipfile.ZipFile(io.BytesIO(zf.read("bank-additional.zip"))) as inner:
+                    with inner.open("bank-additional-full.csv") as f:
+                        df = pd.read_csv(f, sep=";")
+            else:
+                raise ValueError("Could not find a bank marketing CSV in the UCI zip.")
+    except Exception:
+        ds = fetch_openml(name="bank-marketing", version=1, as_frame=True, parser="auto")
+        df = ds.frame.copy()
 
     # Standardize column names (defensive)
     df.columns = [c.strip() for c in df.columns]
