@@ -3,20 +3,17 @@
 # src/data.py
 from __future__ import annotations
 
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Tuple
 
 import numpy as np
 import pandas as pd
-import io
-import zipfile
-from urllib.request import urlopen
-
-from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+
 
 
 @dataclass
@@ -35,30 +32,28 @@ class DatasetBundle:
 
 def load_bank_marketing_df() -> pd.DataFrame:
     """
-    Loads the UCI Bank Marketing dataset with human-readable column names.
-    Prefer the original UCI CSV (semicolon-delimited). If unavailable, fall back to OpenML.
-    """
-    uci_url = "https://archive.ics.uci.edu/static/public/222/bank+marketing.zip"
-    try:
-        with urlopen(uci_url) as resp:
-            data = resp.read()
-        with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            # The UCI bundle contains nested zips: bank.zip and bank-additional.zip.
-            if "bank.zip" in zf.namelist():
-                with zipfile.ZipFile(io.BytesIO(zf.read("bank.zip"))) as inner:
-                    with inner.open("bank-full.csv") as f:
-                        df = pd.read_csv(f, sep=";")
-            elif "bank-additional.zip" in zf.namelist():
-                with zipfile.ZipFile(io.BytesIO(zf.read("bank-additional.zip"))) as inner:
-                    with inner.open("bank-additional-full.csv") as f:
-                        df = pd.read_csv(f, sep=";")
-            else:
-                raise ValueError("Could not find a bank marketing CSV in the UCI zip.")
-    except Exception:
-        ds = fetch_openml(name="bank-marketing", version=1, as_frame=True, parser="auto")
-        df = ds.frame.copy()
+    Load UCI Bank Marketing dataset from local CSV.
 
-    # Standardize column names (defensive)
+    Expected path:
+        data/bank-full.csv
+
+    The file must be non-empty and semicolon-separated.
+    """
+    data_path = Path(__file__).resolve().parents[1] / "data" / "bank-full.csv"
+
+    if not data_path.exists():
+        raise FileNotFoundError(
+            f"Missing dataset at {data_path}. "
+            "Download UCI bank-full.csv and place it under data/."
+        )
+
+    if data_path.stat().st_size == 0:
+        raise ValueError(
+            f"Dataset file is empty: {data_path}. "
+            "Re-download bank-full.csv."
+        )
+
+    df = pd.read_csv(data_path, sep=";")
     df.columns = [c.strip() for c in df.columns]
     return df
 
